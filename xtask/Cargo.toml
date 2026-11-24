@@ -1,0 +1,21 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.100"
+description = "Source quality gates for the workspace"
+publish = false
+
+[dependencies]
+anyhow = "1"
+proc-macro2 = { version = "1", features = ["span-locations"] }
+serde = { version = "1", features = ["derive"] }
+syn = { version = "3", features = ["full", "visit"] }
+toml = "1"
+walkdir = "2"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

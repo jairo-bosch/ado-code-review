@@ -1,10 +1,10 @@
 use clap::{Args, Parser, Subcommand};
 
-use crate::{Error, calculator::Operation};
+use super::{Error, calculator::Operation};
 
 #[derive(Parser)]
 #[command(version, about = "Perform arithmetic on two numbers")]
-pub(crate) struct Cli {
+pub(super) struct Cli {
     #[command(subcommand)]
     command: Command,
 }
@@ -23,14 +23,15 @@ enum Command {
 
 #[derive(Args)]
 struct Operands {
-    #[arg(allow_negative_numbers = true)]
+    // Signed exponents and non-finite values need hyphen support beyond clap's decimal check.
+    #[arg(allow_negative_numbers = true, allow_hyphen_values = true)]
     left: f64,
-    #[arg(allow_negative_numbers = true)]
+    #[arg(allow_negative_numbers = true, allow_hyphen_values = true)]
     right: f64,
 }
 
 impl Cli {
-    pub(crate) fn calculate(self) -> Result<f64, Error> {
+    pub(super) fn calculate(self) -> Result<f64, Error> {
         let (operation, operands) = match self.command {
             Command::Add(values) => (Operation::Add, values),
             Command::Subtract(values) => (Operation::Subtract, values),

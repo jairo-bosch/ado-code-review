@@ -5,11 +5,12 @@ use super::Operation;
 use crate::Error;
 
 #[rstest]
-#[case(Operation::Add, 2.0, 3.0, 5.0)]
-#[case(Operation::Subtract, 2.0, 3.0, -1.0)]
-#[case(Operation::Multiply, -2.0, -3.0, 6.0)]
-#[case(Operation::Divide, 7.0, 2.0, 3.5)]
-fn evaluates(#[case] op: Operation, #[case] a: f64, #[case] b: f64, #[case] expected: f64) {
+#[case(Operation::Add, (2.0, 3.0), 5.0)]
+#[case(Operation::Subtract, (2.0, 3.0), -1.0)]
+#[case(Operation::Multiply, (-2.0, -3.0), 6.0)]
+#[case(Operation::Divide, (7.0, 2.0), 3.5)]
+fn evaluates(#[case] op: Operation, #[case] operands: (f64, f64), #[case] expected: f64) {
+    let (a, b) = operands;
     assert!((op.calculate(a, b).unwrap() - expected).abs() < f64::EPSILON);
 }
 

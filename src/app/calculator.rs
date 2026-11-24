@@ -1,7 +1,7 @@
 use crate::Error;
 
 #[derive(Clone, Copy)]
-pub(crate) enum Operation {
+pub(super) enum Operation {
     Add,
     Subtract,
     Multiply,
@@ -9,7 +9,7 @@ pub(crate) enum Operation {
 }
 
 impl Operation {
-    pub(crate) fn calculate(self, left: f64, right: f64) -> Result<f64, Error> {
+    pub(super) fn calculate(self, left: f64, right: f64) -> Result<f64, Error> {
         if !left.is_finite() || !right.is_finite() {
             return Err(Error::NonFiniteOperand);
         }
@@ -17,14 +17,21 @@ impl Operation {
             Self::Add => left + right,
             Self::Subtract => left - right,
             Self::Multiply => left * right,
-            Self::Divide if right == 0.0 => return Err(Error::DivisionByZero),
-            Self::Divide => left / right,
+            Self::Divide => divide(left, right)?,
         };
         if value.is_finite() {
             Ok(value)
         } else {
             Err(Error::NonFiniteResult)
         }
+    }
+}
+
+fn divide(left: f64, right: f64) -> Result<f64, Error> {
+    if right == 0.0 {
+        Err(Error::DivisionByZero)
+    } else {
+        Ok(left / right)
     }
 }
 
