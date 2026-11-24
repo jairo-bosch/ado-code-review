@@ -55,3 +55,11 @@ Enforced network isolation and architecture boundaries are deferred until those 
 
 GitHub Actions runs the gates and builds the container on pull requests and pushes to `main`.
 JUnit and coverage are archived in the run; dependency policy is also checked every Monday.
+
+### Copilot code review
+
+The [review instructions](.github/instructions/vendored-content.instructions.md) ask Copilot to
+skip routine feedback on `.agents/skills/`, `.claude/skills/`, `skills-lock.json`, and
+`.devcontainer/devcontainer-lock.json`, while still flagging clear security risks. This is review
+guidance, not a hard exclusion. `.gitattributes` collapses those diffs by default on GitHub; it
+does not control Copilot. Keep the two path lists in sync when adding vendored or generated paths.

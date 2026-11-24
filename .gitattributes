@@ -1,0 +1,4 @@
+/.agents/skills/** linguist-generated=true
+/.claude/skills/** linguist-generated=true
+/skills-lock.json linguist-generated=true
+/.devcontainer/devcontainer-lock.json linguist-generated=true
