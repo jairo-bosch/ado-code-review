@@ -7,6 +7,13 @@
       "sourceType": "github",
       "skillPath": "skills/docker-build-strategies/SKILL.md",
       "computedHash": "a9cc5c3839d60ec8e7ca390292e1d4784bc69cf962413cb17364e7b5a46783e1"
+    },
+    "github-issues": {
+      "source": "github/awesome-copilot",
+      "commit": "f10fdb8b2660ce85c98f220b2f1ca24653768a5c",
+      "sourceType": "github",
+      "skillPath": "skills/github-issues/SKILL.md",
+      "computedHash": "2f264ec8b6728b145806031d0e98c3d6e076684bce64ca596be8e82d5495814a"
     }
   }
 }
