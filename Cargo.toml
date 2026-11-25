@@ -2,5 +2,75 @@
 name = "ado-code-review"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.100"
+description = "Command-line calculator for the Azure DevOps review CLI migration"
+publish = false
 
 [dependencies]
+clap = { version = "4.6", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+proptest = "1"
+rstest = "0.26"
+
+[lints]
+workspace = true
+
+[workspace]
+members = ["xtask"]
+
+[workspace.lints.cargo]
+unused_dependencies = "deny"
+
+[workspace.lints.clippy]
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+cargo = { level = "deny", priority = -1 }
+dbg_macro = "deny"
+excessive_nesting = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+nursery = { level = "deny", priority = -1 }
+panic = "deny"
+pedantic = { level = "deny", priority = -1 }
+print_stderr = "deny"
+print_stdout = "deny"
+todo = "deny"
+too_many_arguments = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"
+
+[workspace.lints.rust]
+dead_code = "deny"
+unreachable_pub = "deny"
+unsafe_code = "forbid"
+
+[workspace.metadata.quality.size]
+file-lines = 300
+impl-lines = 200
+fields = 5
+public-methods = 10
+
+[workspace.metadata.quality.function]
+cyclomatic = 8
+cognitive = 10
+branches = 8
+boolean-operands = 3
+
+[workspace.metadata.quality.counts]
+statements = 30
+locals = 10
+exits = 4
+
+[workspace.metadata.quality.tools]
+coverage = 90
+duplicate-lines = 6
+duplicate-threshold = 0
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1

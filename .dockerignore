@@ -1,0 +1,6 @@
+*
+!Cargo.toml
+!Cargo.lock
+!src/
+!xtask/Cargo.toml
+!xtask/src/

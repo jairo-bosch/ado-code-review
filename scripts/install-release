@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo=$1
+tag=$2
+archive=$3
+binary=$4
+checksum=$5
+destination=${CARGO_HOME:-"$HOME/.cargo"}/bin
+temporary=$(mktemp -d)
+trap 'rm -f -- "$temporary/release" "$temporary/binary"; rmdir -- "$temporary"' EXIT
+
+url="https://github.com/$repo/releases/download/$tag/$archive"
+curl --proto '=https' --proto-redir '=https' -fsSL --retry 3 "$url" > "$temporary/release"
+if ! printf '%s  %s\n' "$checksum" "$temporary/release" | sha256sum --check --status; then
+    printf 'Checksum mismatch for %s\n' "$archive" >&2
+    exit 1
+fi
+member=$(tar -tzf "$temporary/release" | awk -F / -v binary="$binary" '$NF == binary && !found++ { print }')
+if [[ -z "$member" ]]; then
+    printf 'Missing %s in %s\n' "$binary" "$archive" >&2
+    exit 1
+fi
+mkdir -p "$destination"
+tar -xOzf "$temporary/release" "$member" > "$temporary/binary"
+install -m 755 "$temporary/binary" "$destination/$binary"

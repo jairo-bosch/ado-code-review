@@ -1,0 +1,12 @@
+{
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu26.04",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "configureZshAsDefaultShell": true
+    },
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "1.100.0"
+    }
+  },
+  "postCreateCommand": "bash scripts/bootstrap && prek install"
+}
