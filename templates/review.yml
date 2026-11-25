@@ -87,8 +87,8 @@ steps:
     condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
     continueOnError: true
     env:
-      REVIEW_VERSION: 'unreleased'
-      REVIEW_SHA256: 'unreleased'
+      REVIEW_VERSION: 'v0.0.1'
+      REVIEW_SHA256: '7d460eb5275640a1535d71ea5b2422a65ae91ac0b301a2224ed3c36d00c3aee2'
       REVIEW_EFFORT: ${{ parameters.effort }}
       REVIEW_EXCLUDE: ${{ convertToJson(parameters.exclude) }}
       AZURE_TOKEN: ${{ parameters.azureToken }}
