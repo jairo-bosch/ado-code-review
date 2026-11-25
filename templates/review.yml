@@ -1,0 +1,96 @@
+parameters:
+  - name: effort
+    type: string
+    default: balanced
+    values: [adaptive, lite, balanced]
+  - name: exclude
+    type: object
+    default: []
+  - name: azureToken
+    type: string
+    default: $(System.AccessToken)
+  - name: copilotGhHost
+    type: string
+    default: github.com
+
+steps:
+  - checkout: none
+  - bash: |
+      set -euo pipefail
+      if [[ $(uname -s):$(uname -m) != Linux:x86_64 ]]; then
+        echo 'ADO Code Review requires a Linux x86_64 agent' >&2
+        exit 1
+      fi
+      if [[ ! $REVIEW_VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ || ! $REVIEW_SHA256 =~ ^[0-9a-f]{64}$ ]]; then
+        echo 'ADO Code Review release is not pinned in this template' >&2
+        exit 1
+      fi
+
+      umask 077
+      cache="$AGENT_TOOLSDIRECTORY/ado-code-review"
+      mkdir -p "$cache"
+      exec 9>"$cache/.lock"
+      flock 9
+
+      destination="$cache/$REVIEW_VERSION"
+      archive="ado-code-review-$REVIEW_VERSION-x86_64-unknown-linux-musl.tar.gz"
+      source="https://github.com/jairo-bosch/ado-code-review/releases/download/$REVIEW_VERSION/$archive"
+      if [[ ! -x "$destination/ado-code-review" || ! -f "$destination/release.sha256" ]] ||
+         [[ $(< "$destination/release.sha256") != "$REVIEW_SHA256" ]]; then
+        temporary=$(mktemp -d "$cache/.download.XXXXXX")
+        trap 'rm -f -- "$temporary/archive" "$temporary/binary"; rmdir -- "$temporary"' EXIT
+        curl --proto '=https' --proto-redir '=https' -fsSL --retry 3 "$source" > "$temporary/archive"
+        printf '%s  %s\n' "$REVIEW_SHA256" "$temporary/archive" | sha256sum --check --status || {
+          echo 'ADO Code Review release checksum did not match' >&2
+          exit 1
+        }
+        tar -xOzf "$temporary/archive" ado-code-review > "$temporary/binary"
+        chmod 755 "$temporary/binary"
+        mkdir -p "$destination"
+        mv -f -- "$temporary/binary" "$destination/ado-code-review"
+        printf '%s\n' "$REVIEW_SHA256" > "$destination/release.sha256"
+        rm -f -- "$temporary/archive"
+        rmdir -- "$temporary"
+        trap - EXIT
+      fi
+
+      touch "$destination"
+      export XDG_CACHE_HOME="$cache/runtime"
+      python3 - "$cache" "$destination" <<'PY'
+      import json
+      import os
+      import re
+      import shutil
+      import sys
+      from pathlib import Path
+
+      cache, destination = map(Path, sys.argv[1:])
+      versions = [path for path in cache.iterdir() if re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", path.name)
+                  and not path.is_symlink() and path.is_dir()]
+      versions.sort(key=lambda path: (path == destination, path.stat().st_mtime_ns), reverse=True)
+      for path in versions[5:]:
+          shutil.rmtree(path)
+      os.close(9)
+
+      patterns = json.loads(os.environ["REVIEW_EXCLUDE"])
+      if not isinstance(patterns, list) or not all(isinstance(pattern, str) for pattern in patterns):
+          sys.exit("Review exclude must be a list of strings")
+      binary = str(destination / "ado-code-review")
+      args = [binary, "review", "--repo-url", os.environ["BUILD_REPOSITORY_URI"],
+              "--pr", os.environ["SYSTEM_PULLREQUEST_PULLREQUESTID"],
+              "--effort", os.environ["REVIEW_EFFORT"]]
+      for pattern in patterns:
+          args.append("--exclude=" + pattern)
+      os.execv(binary, args)
+      PY
+    displayName: Review pull request
+    condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
+    continueOnError: true
+    env:
+      REVIEW_VERSION: 'unreleased'
+      REVIEW_SHA256: 'unreleased'
+      REVIEW_EFFORT: ${{ parameters.effort }}
+      REVIEW_EXCLUDE: ${{ convertToJson(parameters.exclude) }}
+      AZURE_TOKEN: ${{ parameters.azureToken }}
+      COPILOT_GITHUB_TOKEN: $(COPILOT_GITHUB_TOKEN)
+      COPILOT_GH_HOST: ${{ parameters.copilotGhHost }}

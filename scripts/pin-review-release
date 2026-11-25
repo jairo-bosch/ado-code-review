@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+tag=${1:-}
+template=templates/review.yml
+if [[ ! $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo 'Usage: just pin-release vX.Y.Z' >&2
+    exit 2
+fi
+
+git ls-files --error-unmatch -- "$template" > /dev/null
+if ! git diff --quiet HEAD -- "$template"; then
+    echo "Commit or stash local changes to $template before pinning a release" >&2
+    exit 1
+fi
+
+archive="ado-code-review-$tag-x86_64-unknown-linux-musl.tar.gz"
+base="https://github.com/jairo-bosch/ado-code-review/releases/download/$tag"
+checksum=$(curl --proto '=https' --proto-redir '=https' -fsSL --retry 3 "$base/$archive.sha256")
+sha=${checksum%% *}
+if [[ ! $sha =~ ^[0-9a-f]{64}$ || $checksum != "$sha  $archive" ]]; then
+    echo "Invalid checksum asset for $archive" >&2
+    exit 1
+fi
+sed -Ei \
+    -e "s/^([[:space:]]+REVIEW_VERSION:) '[^']+'$/\1 '$tag'/" \
+    -e "s/^([[:space:]]+REVIEW_SHA256:) '[^']+'$/\1 '$sha'/" "$template"
+grep -Fq "REVIEW_VERSION: '$tag'" "$template"
+grep -Fq "REVIEW_SHA256: '$sha'" "$template"
+if git diff --quiet HEAD -- "$template"; then
+    echo "Already pinned to $tag"
+    exit 0
+fi
+git commit --only -m "build(azure): pin review release $tag" -- "$template"

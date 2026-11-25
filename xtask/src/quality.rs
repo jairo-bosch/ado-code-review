@@ -7,6 +7,7 @@ mod findings;
 mod modules;
 mod numbers;
 mod recursion;
+mod runtime_pin;
 mod source;
 
 use std::{
@@ -33,6 +34,7 @@ fn run(command: Option<&str>, root: &Path, out: &mut impl Write) -> anyhow::Resu
             );
         }
         Some("coverage") => writeln!(out, "{}", quality.tools.coverage)?,
+        Some("runtime-pin") => runtime_pin::check(root)?,
         Some("duplication") => {
             writeln!(
                 out,
@@ -40,7 +42,7 @@ fn run(command: Option<&str>, root: &Path, out: &mut impl Write) -> anyhow::Resu
                 quality.tools.duplicate_lines, quality.tools.duplicate_threshold
             )?;
         }
-        _ => anyhow::bail!("usage: xtask <source|coverage|duplication>"),
+        _ => anyhow::bail!("usage: xtask <source|coverage|duplication|runtime-pin>"),
     }
     Ok(())
 }

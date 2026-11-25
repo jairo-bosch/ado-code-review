@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions: {}
+
+jobs:
+  linux-x64:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      CC_x86_64_unknown_linux_musl: musl-gcc
+      CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Build and verify static binary
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          rustup target add x86_64-unknown-linux-musl
+          cargo build --locked --release --target x86_64-unknown-linux-musl
+          binary=target/x86_64-unknown-linux-musl/release/ado-code-review
+          test "$("$binary" --version)" = "ado-code-review ${GITHUB_REF_NAME#v}"
+          headers=$(readelf --program-headers "$binary")
+          if grep -q INTERP <<< "$headers"; then
+            echo 'Release binary requires a dynamic loader' >&2
+            exit 1
+          fi
+      - name: Package release assets
+        shell: bash
+        run: |
+          archive="ado-code-review-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz"
+          tar -czf "$archive" -C target/x86_64-unknown-linux-musl/release ado-code-review
+          sha256sum "$archive" > "$archive.sha256"
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          archive="ado-code-review-${GITHUB_REF_NAME}-x86_64-unknown-linux-musl.tar.gz"
+          gh release create "$GITHUB_REF_NAME" "$archive" "$archive.sha256" --verify-tag --generate-notes

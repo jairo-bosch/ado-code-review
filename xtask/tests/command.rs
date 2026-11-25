@@ -6,6 +6,20 @@ use std::{
 
 const MANIFEST: &str = include_str!("../../Cargo.toml");
 
+#[test]
+fn verifies_the_resolved_copilot_runtime_pin() {
+    let output = Command::new(env!("CARGO_BIN_EXE_xtask"))
+        .arg("runtime-pin")
+        .current_dir(Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap())
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 fn source(root: &Path) -> io::Result<Output> {
     Command::new(env!("CARGO_BIN_EXE_xtask"))
         .arg("source")

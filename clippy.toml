@@ -7,3 +7,4 @@ allow-panic-in-tests = true
 allow-indexing-slicing-in-tests = true
 allow-unwrap-in-consts = false
 allow-expect-in-consts = false
+allowed-duplicate-crates = ["syn"]  # The pinned Copilot SDK still uses Syn 2 in transitive macros.

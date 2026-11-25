@@ -10,7 +10,7 @@ zizmor_version := "1.33.1"
 tombi_version := "1.11.3"
 jscpd_version := "5.4.3"
 actionlint_version := "1.7.12"
-gates := "format lint source duplication deps toml-format toml-lint hooks coverage doctests"
+gates := "format lint source duplication deps toml-format toml-lint hooks runtime-pin coverage doctests"
 
 default: check
 
@@ -61,6 +61,9 @@ test:
 deny:
     cargo deny --locked check
 
+pin-release tag:
+    bash scripts/pin-review-release {{quote(tag)}}
+
 check: (_check "")
 
 check-all: (_check "yes")
@@ -94,6 +97,9 @@ check-toml-lint:
 
 check-hooks:
     SKIP=cargo-fmt,cargo-clippy,gitleaks prek run --all-files
+
+check-runtime-pin:
+    cargo run --locked --quiet -p xtask -- runtime-pin
 
 check-coverage:
     mkdir -p target/reports

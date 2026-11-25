@@ -1,20 +1,43 @@
 [package]
 name = "ado-code-review"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 rust-version = "1.100"
-description = "Command-line calculator for the Azure DevOps review CLI migration"
+description = "Command-line code review for Azure DevOps pull requests"
 publish = false
 
 [dependencies]
 clap = { version = "4.6", features = ["derive"] }
+copilot-sdk = { version = "=2.0.2", default-features = false, features = ["runtime"] }
+flate2 = "1"
+globset = "0.4"
+http = "1"
+httpdate = "1"
+percent-encoding = "2"
+secrecy = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.11"
+similar = "2"
+tar = "0.4"
+tempfile = "3"
 thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt", "time"] }
+url = "2"
+uuid = { version = "1", features = ["serde"] }
 
 [dev-dependencies]
 assert_cmd = "2"
+insta = { version = "1", default-features = false }
 predicates = "3"
-proptest = "1"
-rstest = "0.26"
+rstest = "0.29"
+wiremock = "0.6"
+
+[target.'cfg(not(target_env = "musl"))'.dependencies]
+curl = "0.4"
+
+[target.'cfg(target_env = "musl")'.dependencies]
+curl = { version = "0.4", features = ["static-curl", "static-ssl"] }
 
 [lints]
 workspace = true
