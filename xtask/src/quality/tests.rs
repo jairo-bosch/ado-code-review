@@ -68,15 +68,25 @@ fn detects_unary_negative_floats_in_macro_tokens() {
     for source in [
         "fn check() { vec![-1.0]; }",
         "fn check() { vec![1.0, -1.0]; }",
+        "fn check() { vec![-(1.0)]; }",
+        "fn check() { vec![-((1.0))]; }",
         "fn check() { show!([value * -1.0]); }",
         "fn check() { vec![-2.0]; }",
+        "fn check() { vec![-(2.0)]; }",
+        "fn check() { vec![-(value + 2.0)]; }",
     ] {
         let findings = inspect(source, &QUALITY);
         assert_eq!(findings.len(), 1, "{source}: {findings:?}");
         assert!(findings[0].contains("magic-number"));
     }
-    let allowed = "fn check() { show!(value - 1.0, (value) - 1.0, value? - 1.0, [-0.0, -1]); }";
-    assert_eq!(inspect(allowed, &QUALITY), [] as [String; 0]);
+    for source in [
+        "fn check() { show!(value - 1.0, (value) - 1.0, value? - 1.0, [-0.0, -1]); }",
+        "fn check() { show!(value - (1.0), -(0.0), -(1)); }",
+        "fn check() { show!(-(1.0 + value), -{1.0}); }",
+    ] {
+        let findings = inspect(source, &QUALITY);
+        assert!(findings.is_empty(), "{source}: {findings:?}");
+    }
 }
 
 #[test]
