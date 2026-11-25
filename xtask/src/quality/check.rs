@@ -71,17 +71,10 @@ impl Check<'_> {
             .path
             .segments
             .iter()
-            .map(|segment| segment.ident.to_string());
-        let Some(first) = segments.next() else { return };
+            .map(|segment| segment.ident.to_string())
+            .peekable();
         let mut key = self.module.clone();
-        match first.as_str() {
-            "crate" => key.truncate(1),
-            "self" => {}
-            "super" => {
-                key.pop();
-            }
-            _ => key.push(first),
-        }
+        resolve_scope(&mut key, &mut segments);
         key.extend(segments);
         self.methods
             .entry(key)
@@ -98,6 +91,28 @@ impl Check<'_> {
 
     fn token_numbers(&mut self, tokens: TokenStream) {
         numbers::tokens(tokens, &mut |span| self.magic(span));
+    }
+}
+
+fn resolve_scope(
+    key: &mut Vec<String>,
+    segments: &mut std::iter::Peekable<impl Iterator<Item = String>>,
+) {
+    match segments.peek().map(String::as_str) {
+        Some("crate") => {
+            key.truncate(1);
+            segments.next();
+        }
+        Some("self") => {
+            segments.next();
+        }
+        _ => {
+            while segments.next_if(|segment| segment == "super").is_some() {
+                if key.len() > 1 {
+                    key.pop();
+                }
+            }
+        }
     }
 }
 

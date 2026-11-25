@@ -12,13 +12,13 @@ static QUALITY: LazyLock<Quality> = LazyLock::new(|| Quality::parse(MANIFEST).un
 fn inspect(source: &str, quality: &Quality) -> Vec<String> {
     let mut methods = Methods::new();
     let findings = audit::file(
-        (
+        &(
             "src/fixture.rs".into(),
             source.lines().count(),
             syn::parse_file(source).unwrap(),
         ),
         quality,
-        (vec![], &mut methods),
+        (vec!["fixture".to_owned()], &mut methods),
     );
     findings
         .into_iter()
@@ -126,7 +126,7 @@ fn counts_bindings_and_exit_points_without_nested_functions() {
     let mut counts = Counts::default();
     counts.visit_signature(&function.sig);
     counts.block(&function.block);
-    assert_eq!(counts.locals, 7);
+    assert_eq!(counts.locals, 8);
     assert_eq!(counts.exits, 2);
     assert_eq!(counts.statements, 8);
 
@@ -134,6 +134,45 @@ fn counts_bindings_and_exit_points_without_nested_functions() {
     let mut exits = Counts::default();
     exits.block(&tail_return);
     assert_eq!(exits.exits, 1);
+}
+
+#[test]
+fn limits_locals_bound_in_match_patterns() {
+    let findings = inspect(
+        "fn example() {
+            match value {
+                #[cfg(test)] Some(test_only) => {},
+                Some((a, b, c, d, e, f, g, h, i, j, k)) if a => {},
+                _ => {},
+            }
+        }",
+        &QUALITY,
+    );
+    assert_eq!(findings.len(), 1, "{findings:?}");
+    assert!(findings[0].contains("locals"), "{findings:?}");
+    assert!(findings[0].contains("11"), "{findings:?}");
+}
+
+#[test]
+fn aggregates_methods_through_multiple_super_qualifiers() {
+    let source = "
+        struct Root;
+        impl Root {
+            pub fn a() {} pub fn b() {} pub fn c() {}
+            pub fn d() {} pub fn e() {} pub fn f() {}
+        }
+        mod outer {
+            mod inner {
+                impl super::super::Root {
+                    pub fn g() {} pub fn h() {} pub fn i() {}
+                    pub fn j() {} pub fn k() {}
+                }
+            }
+        }
+    ";
+    let findings = inspect(source, &QUALITY);
+    assert_eq!(findings.len(), 1, "{findings:?}");
+    assert!(findings[0].contains("public-methods"));
 }
 
 #[test]

@@ -1,5 +1,6 @@
 use std::{
     collections::BTreeSet,
+    ffi::OsStr,
     fs,
     path::{Path, PathBuf},
 };
@@ -13,8 +14,8 @@ use super::{
     check::{Check, Methods},
     config::Quality,
     findings::{Finding, Report},
+    modules,
     source::{module_path, production, test_only},
-    test_modules,
 };
 
 pub(super) fn workspace(root: &Path, quality: &Quality) -> anyhow::Result<Vec<Finding>> {
@@ -35,31 +36,54 @@ fn package_files(
     (quality, methods): (&Quality, &mut Methods),
 ) -> anyhow::Result<Vec<Finding>> {
     let files = scan(root, directory)?;
-    let excluded = excluded_modules(&files);
+    let scopes = modules::scopes(
+        directory,
+        &files
+            .iter()
+            .map(|source| (source.path.as_path(), source.ast.as_ref().ok()))
+            .collect(),
+    );
     let mut findings = Vec::new();
-    for source in files {
-        if !source
-            .path
-            .ancestors()
-            .any(|ancestor| excluded.contains(ancestor))
-        {
-            let mut module = vec![directory.to_string_lossy().into_owned()];
-            module.extend(module_path(&source.path));
-            let parsed = (directory.join(source.path), source.lines, source.ast?);
-            findings.extend(file(parsed, quality, (module, methods)));
-        }
+    for source in files.into_iter().filter(|source| production(&source.path)) {
+        findings.extend(check_source(
+            source,
+            (directory, &scopes),
+            (quality, methods),
+        )?);
     }
     Ok(findings)
 }
 
-fn excluded_modules(files: &[Source]) -> BTreeSet<PathBuf> {
-    let mut excluded = BTreeSet::new();
-    for source in files {
-        if let Ok(ast) = &source.ast {
-            test_modules::exclusions(&source.path, ast, &mut excluded);
-        }
+fn check_source(
+    source: Source,
+    (directory, scopes): (&Path, &modules::Scopes),
+    (quality, methods): (&Quality, &mut Methods),
+) -> anyhow::Result<Vec<Finding>> {
+    let Some(scope) = scopes.get(&source.path) else {
+        let mut scope = vec![directory.to_string_lossy().into_owned()];
+        scope.extend(module_path(&source.path));
+        let parsed = (directory.join(source.path), source.lines, source.ast?);
+        return Ok(file(&parsed, quality, (scope, methods)));
+    };
+    check_reached(source, (directory, scope), (quality, methods))
+}
+
+fn check_reached(
+    source: Source,
+    (directory, scope): (&Path, &BTreeSet<Vec<String>>),
+    (quality, methods): (&Quality, &mut Methods),
+) -> anyhow::Result<Vec<Finding>> {
+    let mut routes = scope.iter();
+    let Some(first) = routes.next() else {
+        return Ok(Vec::new());
+    };
+    let parsed = (directory.join(source.path), source.lines, source.ast?);
+    let findings = file(&parsed, quality, (first.clone(), methods));
+    // Collect methods in every production scope, but report file findings only once.
+    for module in routes {
+        file(&parsed, quality, (module.clone(), methods));
     }
-    excluded
+    Ok(findings)
 }
 
 struct Source {
@@ -73,7 +97,7 @@ fn scan(root: &Path, directory: &Path) -> anyhow::Result<Vec<Source>> {
     let mut files = Vec::new();
     for entry in WalkDir::new(&source_root).sort_by_file_name() {
         let entry = entry.with_context(|| format!("cannot walk {}", source_root.display()))?;
-        if entry.file_type().is_file() && production(entry.path()) {
+        if entry.file_type().is_file() && entry.path().extension() == Some(OsStr::new("rs")) {
             files.push(parse(entry.path(), &source_root, directory)?);
         }
     }
@@ -81,7 +105,8 @@ fn scan(root: &Path, directory: &Path) -> anyhow::Result<Vec<Source>> {
 }
 
 fn parse(absolute: &Path, source_root: &Path, directory: &Path) -> anyhow::Result<Source> {
-    let path = absolute.strip_prefix(source_root)?.to_path_buf();
+    let path = modules::normalize(absolute.strip_prefix(source_root)?)
+        .with_context(|| format!("invalid source path {}", absolute.display()))?;
     let content = fs::read_to_string(absolute)
         .with_context(|| format!("cannot read {}", absolute.display()))?;
     let ast = syn::parse_file(&content)
@@ -94,13 +119,13 @@ fn parse(absolute: &Path, source_root: &Path, directory: &Path) -> anyhow::Resul
 }
 
 pub(super) fn file(
-    (path, lines, ast): (PathBuf, usize, syn::File),
+    (path, lines, ast): &(PathBuf, usize, syn::File),
     quality: &Quality,
     scopes: (Vec<String>, &mut Methods),
 ) -> Vec<Finding> {
     let (module, methods) = scopes;
     let mut report = Report {
-        path,
+        path: path.clone(),
         findings: Vec::new(),
     };
     if test_only(&ast.attrs) {
@@ -108,7 +133,7 @@ pub(super) fn file(
     }
     report.limit(
         (Span::call_site(), "file-lines"),
-        (lines, quality.size.file_lines),
+        (*lines, quality.size.file_lines),
     );
     let mut check = Check {
         quality,
@@ -116,7 +141,7 @@ pub(super) fn file(
         methods,
         module,
     };
-    check.visit_file(&ast);
+    check.visit_file(ast);
     check.report.findings
 }
 

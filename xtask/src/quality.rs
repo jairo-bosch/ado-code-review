@@ -4,10 +4,10 @@ mod complexity;
 mod config;
 mod counts;
 mod findings;
+mod modules;
 mod numbers;
 mod recursion;
 mod source;
-mod test_modules;
 
 use std::{
     env,

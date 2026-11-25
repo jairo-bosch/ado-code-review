@@ -1,5 +1,5 @@
 use syn::{
-    Arm, Block, Expr, ExprClosure, ExprReturn, FnArg, Item, Pat, PatIdent, Stmt,
+    Arm, Block, Expr, ExprClosure, ExprReturn, FnArg, Item, PatIdent, Stmt,
     visit::{self, Visit},
 };
 
@@ -49,10 +49,7 @@ impl<'ast> Visit<'ast> for Counts {
 
     fn visit_arm(&mut self, node: &'ast Arm) {
         if !test_only(&node.attrs) {
-            if let Pat::Guard(guard) = &node.pat {
-                self.visit_expr(&guard.guard);
-            }
-            self.visit_expr(&node.body);
+            visit::visit_arm(self, node);
         }
     }
 

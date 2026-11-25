@@ -47,7 +47,10 @@ just deny       # check dependency policy and RustSec advisories
 
 Custom source thresholds and justified per-file exceptions are in `[workspace.metadata.quality]` in
 `Cargo.toml`. The source checks inspect the application and `xtask` ASTs before macro expansion,
-skipping test-only items and `tests.rs`. McCabe counts `&&`/`||` decisions but not `?`. Cognitive
+following `mod` declarations and `#[path]` overrides from crate roots. It skips test-only items,
+files reached only through test-only modules, and `tests.rs`. Unlinked source files are still
+checked. Public methods are counted per type within each crate target.
+McCabe counts `&&`/`||` decisions but not `?`. Cognitive
 complexity counts syntactically visible direct recursion; it does not resolve indirect call cycles.
 Stable Rust region coverage is not branch coverage; doctests run separately. Nextest uses a process
 per test instead of shuffling.

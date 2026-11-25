@@ -25,7 +25,7 @@ fn requires_test(meta: Meta) -> bool {
 }
 
 pub(super) fn production(path: &Path) -> bool {
-    path.extension() == Some(OsStr::new("rs")) && path.file_name() != Some(OsStr::new("tests.rs"))
+    path.file_name() != Some(OsStr::new("tests.rs"))
 }
 
 pub(super) fn module_path(path: &Path) -> Vec<String> {
