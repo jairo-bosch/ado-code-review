@@ -254,9 +254,9 @@ impl<'ast> Visit<'ast> for Check<'_> {
     }
 
     fn visit_expr_unary(&mut self, node: &'ast ExprUnary) {
-        if let Expr::Lit(literal) = node.expr.as_ref()
+        if let (syn::UnOp::Neg(_), Expr::Lit(literal)) = (&node.op, numbers::unwrapped(&node.expr))
             && numbers::allowed(&literal.lit)
-            && numbers::forbidden_negative(&node.op, &literal.lit)
+            && numbers::forbidden_negative(&literal.lit)
         {
             self.magic(node.span());
         }

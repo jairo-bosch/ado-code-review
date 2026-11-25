@@ -49,6 +49,37 @@ fn ignores_tests_attributes_constants_and_discriminants() {
 }
 
 #[test]
+fn detects_negative_floats_through_parentheses() {
+    let findings = inspect("fn check() { -(1.0); -((1.0)); -(2.0); }", &QUALITY);
+    assert_eq!(findings.len(), 3, "{findings:?}");
+    assert!(
+        findings
+            .iter()
+            .all(|finding| finding.contains("magic-number"))
+    );
+    assert_eq!(
+        inspect("fn check() { -(0.0); -(1); }", &QUALITY),
+        [] as [String; 0]
+    );
+}
+
+#[test]
+fn detects_unary_negative_floats_in_macro_tokens() {
+    for source in [
+        "fn check() { vec![-1.0]; }",
+        "fn check() { vec![1.0, -1.0]; }",
+        "fn check() { show!([value * -1.0]); }",
+        "fn check() { vec![-2.0]; }",
+    ] {
+        let findings = inspect(source, &QUALITY);
+        assert_eq!(findings.len(), 1, "{source}: {findings:?}");
+        assert!(findings[0].contains("magic-number"));
+    }
+    let allowed = "fn check() { show!(value - 1.0, (value) - 1.0, value? - 1.0, [-0.0, -1]); }";
+    assert_eq!(inspect(allowed, &QUALITY), [] as [String; 0]);
+}
+
+#[test]
 fn aggregates_impl_blocks_and_applies_exact_exceptions() {
     let manifest = format!(
         "{MANIFEST}\n[[workspace.metadata.quality.exceptions]]\n\

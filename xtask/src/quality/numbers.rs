@@ -1,5 +1,5 @@
 use proc_macro2::{Span, TokenStream, TokenTree};
-use syn::{Lit, UnOp};
+use syn::{Expr, Lit};
 
 pub(super) fn allowed(literal: &Lit) -> bool {
     match literal {
@@ -9,23 +9,41 @@ pub(super) fn allowed(literal: &Lit) -> bool {
     }
 }
 
-pub(super) fn forbidden_negative(operator: &UnOp, literal: &Lit) -> bool {
-    matches!(operator, UnOp::Neg(_))
-        && matches!(literal, Lit::Float(value) if !matches!(value.base10_parse::<f64>(), Ok(0.0)))
+pub(super) fn unwrapped(mut expr: &Expr) -> &Expr {
+    loop {
+        expr = match expr {
+            Expr::Paren(paren) => &paren.expr,
+            Expr::Group(group) => &group.expr,
+            _ => return expr,
+        };
+    }
+}
+
+pub(super) fn forbidden_negative(literal: &Lit) -> bool {
+    matches!(literal, Lit::Float(value) if !matches!(value.base10_parse::<f64>(), Ok(0.0)))
+}
+
+fn forbidden_token(raw: &proc_macro2::Literal, negative: bool) -> bool {
+    syn::parse_str::<Lit>(&raw.to_string())
+        .is_ok_and(|value| !allowed(&value) || (negative && forbidden_negative(&value)))
 }
 
 pub(super) fn tokens(stream: TokenStream, warn: &mut impl FnMut(Span)) {
+    let mut expects_operand = true;
+    let mut negative = false;
     for token in stream {
+        if let TokenTree::Punct(punct) = token {
+            let symbol = punct.as_char();
+            negative = expects_operand && symbol == '-';
+            expects_operand = symbol != '?';
+            continue;
+        }
         match token {
             TokenTree::Group(group) => tokens(group.stream(), warn),
-            TokenTree::Literal(raw) => {
-                if let Ok(value) = syn::parse_str::<Lit>(&raw.to_string())
-                    && !allowed(&value)
-                {
-                    warn(raw.span());
-                }
-            }
+            TokenTree::Literal(raw) if forbidden_token(&raw, negative) => warn(raw.span()),
             _ => {}
         }
+        expects_operand = false;
+        negative = false;
     }
 }
