@@ -145,6 +145,11 @@ fn limits_locals_bound_in_match_patterns() {
                 Some((a, b, c, d, e, f, g, h, i, j, k)) if a => {},
                 _ => {},
             }
+        }
+        fn alternatives() {
+            match value {
+                Ok((a, b, c, d, e, f)) | Err((a, b, c, d, e, f)) => {},
+            }
         }",
         &QUALITY,
     );

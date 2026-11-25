@@ -43,7 +43,7 @@ just deny       # check dependency policy and RustSec advisories
 | Coverage and timeout | cargo-llvm-cov: 90% line and region coverage across both packages; nextest: 2 seconds per test |
 | Dependency hygiene | Cargo and cargo-shear for unused dependencies; cargo-deny for advisories, licenses, and sources |
 | Config and workflows | Tombi for TOML, prek for YAML syntax, actionlint and zizmor for GitHub Actions |
-| Secret scanning | Gitleaks via prek at commit time, including the Azure DevOps PAT rule |
+| Secret scanning | Gitleaks via prek at commit time, including legacy and current Azure DevOps PATs |
 
 Custom source thresholds and justified per-file exceptions are in `[workspace.metadata.quality]` in
 `Cargo.toml`. The source checks inspect the application and `xtask` ASTs before macro expansion,

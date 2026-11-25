@@ -1,5 +1,5 @@
 use syn::{
-    Arm, Block, Expr, ExprClosure, ExprReturn, FnArg, Item, PatIdent, Stmt,
+    Arm, Block, Expr, ExprClosure, ExprReturn, FnArg, Item, PatIdent, PatOr, Stmt,
     visit::{self, Visit},
 };
 
@@ -45,6 +45,17 @@ impl<'ast> Visit<'ast> for Counts {
     fn visit_pat_ident(&mut self, node: &'ast PatIdent) {
         self.locals += 1;
         visit::visit_pat_ident(self, node);
+    }
+
+    fn visit_pat_or(&mut self, node: &'ast PatOr) {
+        let before = self.locals;
+        let mut most = before;
+        for case in &node.cases {
+            self.locals = before;
+            self.visit_pat(case);
+            most = most.max(self.locals);
+        }
+        self.locals = most;
     }
 
     fn visit_arm(&mut self, node: &'ast Arm) {
